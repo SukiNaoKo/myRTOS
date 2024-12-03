@@ -1,23 +1,17 @@
 
-#include"global.h"
+#include "global.h"
 
 #define config_heap 8*1024
+
 #define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
 static uint8_t allheap[config_heap];
-typedef TCB_t   *TaskHandle_t;
-__MINGW_ATTRIB_USED TCB_t* volatile pxCurrentTCB = NULL;
-static TCB_t* pxCurrentTCB; 
+
+static int x = 0;
+
 static uint32_t  ReadyBitTable;
 
-typedef void(*TaskFunction_t)(void *);
-
-Class(TCB_t)
-{
-    volatile uint32_t *pxTopOfStack;
-    task_register_stack  *self_register;
-    uint32_t priority;
-    uint32_t *pxStack;
-};
+typedef void (*TaskFunction_t)(void *);
 
 Class(task_register_stack)
 {
@@ -40,6 +34,23 @@ Class(task_register_stack)
     uint32_t xPSR;
 };
 
+
+
+Class(TCB_t)
+{
+    volatile uint32_t *pxTopOfStack;
+    uint32_t priority;
+    uint32_t *pxStack;
+		task_register_stack  *self_register;
+};
+
+typedef TCB_t   *TaskHandle_t;
+
+
+static TCB_t* TcbTaskTable[2];
+
+extern TCB_t* volatile pxCurrentTCB;
+
 Class(heap_node)
 {
     heap_node *next;
@@ -53,10 +64,7 @@ Class(xheap)
     size_t allsize;
 };
 
-xheap theheap = {
-    .tail = NULL,
-    .allsize = config_heap
-};
+
 
 
 uint32_t * pxPortInitialistStack(uint32_t* pxTopOfStack,TaskFunction_t pxCode);
@@ -64,3 +72,5 @@ uint32_t * pxPortInitialistStack(uint32_t* pxTopOfStack,TaskFunction_t pxCode);
 void xTaskCreate(TaskFunction_t pxTaskCode,uint16_t StackSize, uint32_t uxpriority, TaskHandle_t self);
 void __attribute__((always_inline)) SchedulerStart(void);
 void __attribute__((naked)) vPortSVCHandler(void);
+void __attribute__((naked)) xPortPendSVHandler( void);
+void vTaskSwitchContext( void );
