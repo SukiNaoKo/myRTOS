@@ -5,6 +5,7 @@
 
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
+#define TASK_PRIO_MAX   10u
 static uint8_t allheap[config_heap];
 
 static int x = 0;
@@ -44,33 +45,64 @@ Class(TCB_t)
 		task_register_stack  *self_register;
 };
 
+
+
+
+
+
+
+
+
 typedef TCB_t   *TaskHandle_t;
 
 
 static TCB_t* TcbTaskTable[2];
 
+
 extern TCB_t* volatile pxCurrentTCB;
 
-Class(heap_node)
-{
-    heap_node *next;
-    size_t blocksize;
-};
+typedef uint8_t             k_prio_t;
 
-Class(xheap)
+typedef struct k_list_node_st
 {
-    heap_node head;
-    heap_node *tail;
-    size_t allsize;
-};
+    struct k_list_node_st *next;
+    struct k_list_node_st *prev;
+    TCB_t *tcb;
+} k_list_t;
+
+
+typedef struct readyqueue_st
+{
+    k_list_t*    task_list_head[TASK_PRIO_MAX];     //优先级列表
+    uint32_t    prio_mask;           //用于指示系统目前所使用优先级的优先级表
+    k_prio_t    highest_prio;        //最高优先级
+} readyqueue_t;
+
 
 
 
 
 uint32_t * pxPortInitialistStack(uint32_t* pxTopOfStack,TaskFunction_t pxCode);
 
-void xTaskCreate(TaskFunction_t pxTaskCode,uint16_t StackSize, uint32_t uxpriority, TaskHandle_t self);
 void __attribute__((always_inline)) SchedulerStart(void);
 void __attribute__((naked)) vPortSVCHandler(void);
 void __attribute__((naked)) xPortPendSVHandler( void);
 void vTaskSwitchContext( void );
+
+
+void readyqueue_init(void);
+void list_init(k_list_t* list);
+k_list_t* add_task_list(k_list_t* list,TCB_t *new_tcb);
+k_list_t* readyqueue_add_task_list(TCB_t* new_tcb);
+k_list_t* xTaskCreate(TaskFunction_t pxTaskCode,uint16_t StackSize, uint32_t uxpriority, TaskHandle_t self);
+uint32_t * pxPortInitialistStack(uint32_t* pxTopOfStack,TaskFunction_t pxCode);
+void _list_add(k_list_t* node, k_list_t* prev, k_list_t* next);
+void tos_list_add(k_list_t* node, k_list_t* list);
+void tos_list_add_tail(k_list_t* node, k_list_t* list);
+void _list_del(k_list_t* prev, k_list_t* next);
+void _list_del_node(k_list_t* node);
+int tos_list_empty(k_list_t* task_list);
+void readyqueue_prio_remove(uint32_t task_prio);
+int readyqueue_prio_highest_get(uint32_t n);
+void readyqueue_remove(k_list_t* task);
+void switch_task(void);
